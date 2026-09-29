@@ -33,12 +33,17 @@ sudo echo
 
 # Select language, optional
 declare -A INSTALLER_LANGS=(
-    [Chinese]=zh_CN
+    [Chinese_simplified]=zh_CN
+    [Chinese_traditional]=zh_TW
     [English]=EN
     [French]=FR
     [German]=DE
+    [Hungarian]=HU
     [Italian]=IT
+    [Korean]=KO
+    [Latvian]=LV
     [Norwegian]=NO
+    [Polish]=PL
     [Portuguese]=PT
     [Russian]=RU
     [Rusyn]=RUE
@@ -47,17 +52,21 @@ declare -A INSTALLER_LANGS=(
     [Ukrainian]=UA
 )
 
-INSTALLER_LANG_NAMES=($(echo ${!INSTALLER_LANGS[*]} | tr ' ' '\n' | sort -n))
+if [[ ${1:-} == "--lang" && -v 2 && -v INSTALLER_LANGS[$2] ]]; then
+    INSTALLER_LANG=$2
+else
+    INSTALLER_LANG_NAMES=($(echo ${!INSTALLER_LANGS[*]} | tr ' ' '\n' | sort -n))
 
-PS3='Please select language #: '
-select l in "${INSTALLER_LANG_NAMES[@]}"; do
-    if [[ -v INSTALLER_LANGS[$l] ]]; then
-        INSTALLER_LANG=$l
-        break
-    else
-        echo 'No such language, try again'
-    fi
-done < /dev/tty
+    PS3='Please select language #: '
+    select l in "${INSTALLER_LANG_NAMES[@]}"; do
+        if [[ -v INSTALLER_LANGS[$l] ]]; then
+            INSTALLER_LANG=$l
+            break
+        else
+            echo 'No such language, try again'
+        fi
+    done < /dev/tty
+fi
 
 echo 'Fetching and unpacking theme'
 wget -O - https://github.com/shvchk/${GRUB_THEME}/archive/master.tar.gz | tar -xzf - --strip-components=1
@@ -90,22 +99,16 @@ if [[ -e /etc/os-release ]]; then
 
         UPDATE_GRUB='update-grub'
 
-    elif [[ "$ID" =~ (arch|gentoo) || \
-            "$ID_LIKE" =~ (archlinux|gentoo) ]]; then
+    elif [[ "$ID" =~ (arch|gentoo|artix) || \
+            "$ID_LIKE" =~ (^arch|gentoo|^artix) ]]; then
 
-        UPDATE_GRUB='grub-mkconfig -o /boot/grub/grub.cfg'
+        UPDATE_GRUB="grub-mkconfig -o /boot/${GRUB_DIR}/grub.cfg"
 
     elif [[ "$ID" =~ (centos|fedora|opensuse) || \
             "$ID_LIKE" =~ (fedora|rhel|suse) ]]; then
 
         GRUB_DIR='grub2'
-        GRUB_CFG='/boot/grub2/grub.cfg'
-
-        if [[ "$BOOT_MODE" = "UEFI" ]]; then
-            GRUB_CFG="/boot/efi/EFI/${ID}/grub.cfg"
-        fi
-
-        UPDATE_GRUB="grub2-mkconfig -o ${GRUB_CFG}"
+        UPDATE_GRUB="grub2-mkconfig -o /boot/${GRUB_DIR}/grub.cfg"
 
         # BLS etries have 'kernel' class, copy corresponding icon
         if [[ -d /boot/loader/entries && -e icons/${ID}.png ]]; then
@@ -150,7 +153,7 @@ else
     Common ways:
     - Debian, Ubuntu, Solus and derivatives: `update-grub` or `grub-mkconfig -o /boot/grub/grub.cfg`
     - RHEL, CentOS, Fedora, SUSE and derivatives: `grub2-mkconfig -o /boot/grub2/grub.cfg`
-    - Arch, Gentoo and derivatives: `grub-mkconfig -o /boot/grub/grub.cfg`
+    - Arch, Artix, Gentoo and derivatives: `grub-mkconfig -o /boot/grub/grub.cfg`
     --------------------------------------------------------------------------------
     EOF
 fi
